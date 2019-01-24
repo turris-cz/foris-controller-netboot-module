@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+
+import sys
+import json
+import pathlib
+
+DEVICE_PATH = "/tmp/foris-controller-netboot-test/"
+
+args = sys.argv[1:]
+
+if args[0] == "-j":
+    args = args[1:]
+
+path = pathlib.Path(DEVICE_PATH)
+
+
+def get_lists():
+    macs = {e.parts[-1] for e in path.glob("*")}
+    accepted = {e.parts[-2] for e in path.glob("*/accepted")}
+    return list(accepted), list(macs - accepted)
+
+
+if args[0] == "list-all":
+    accepted, incomming = get_lists()
+    res = {
+        "accepted": accepted,
+        "incomming": incomming,
+    }
+    print(json.dumps(res, indent=2))
+    sys.exit(0)
+elif args[0] == "list-incomming":
+    _, incomming = get_lists()
+    res = {
+        "incomming": incomming,
+    }
+    print(json.dumps(res, indent=2))
+    sys.exit(0)
+elif args[0] == "list-accepted":
+    accepted, _ = get_lists()
+    res = {
+        "accepted": accepted,
+    }
+    print(json.dumps(res, indent=2))
+    sys.exit(0)
+elif args[0] == "revoke":
+    accepted_path = path / args[1] / "accepted"
+    if accepted_path.exists():
+        accepted_path.unlink()
+        sys.exit(0)
+    else:
+        sys.exit(1)
+elif args[0] == "accept":
+    accepted_path = path / args[1] / "accepted"
+    if accepted_path.exists():
+        sys.exit(1)
+    else:
+        with accepted_path.open("w") as f:
+            f.flush()
+        sys.exit(0)

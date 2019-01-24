@@ -1,0 +1,153 @@
+{
+    "definitions": {
+        "device_states": {"enum": ["accepted", "incomming"]}
+    },
+    "oneOf": [
+        {
+            "description": "Request to list netboot devices the netboot module",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["list"]}
+            },
+            "additionalProperties": false
+        },
+        {
+           "description": "Reply to list netboot devices the netboot module",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["list"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "devices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "macaddr": {"format": "macaddress", "type": "string"},
+                                    "state": {"$ref": "#/definitions/device_states"}
+                                },
+                                "additionalProperties": false,
+                                "required": ["macaddr", "state"]
+                            }
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["devices"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to revoke netboot device",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "macaddr": {"format": "macaddress", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["macaddr"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to revoke netboot device",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that netboot access was revoked",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "macaddr": {"format": "macaddress", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["macaddr"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to accept netboot device",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["accept"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "macaddr": {"format": "macaddress", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["macaddr"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to accept netboot",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["accept"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that netboot access was accepted",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["accept"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "macaddr": {"format": "macaddress", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["macaddr"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}
