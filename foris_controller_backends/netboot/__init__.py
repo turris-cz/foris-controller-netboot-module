@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class NetbootCmds(BaseCmdLine):
     def list(self) -> typing.List[dict]:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "-j", "list-all")
+        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "list-all", "-j")
         if retval != 0:
             return []
         try:
