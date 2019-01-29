@@ -36,10 +36,10 @@ def init_netboot_devices():
     except Exception:
         pass
 
-    dir_path = os.path.join(DEVICE_PATH, "11:22:33:44:55:66")
+    dir_path = os.path.join(DEVICE_PATH, "0000000D300002AF")
     os.makedirs(dir_path)
 
-    dir_path = os.path.join(DEVICE_PATH, "11:22:33:44:55:77")
+    dir_path = os.path.join(DEVICE_PATH, "0000000D30000299")
     os.makedirs(dir_path)
 
     with open(os.path.join(dir_path, "accepted"), "w") as f:
@@ -62,7 +62,7 @@ def test_list(infrastructure, start_buses, init_netboot_devices):
     })
     assert "devices" in res["data"]
     for device in res["data"]["devices"]:
-        set(device.keys()) == {"macaddr", "state"}
+        set(device.keys()) == {"serial", "state"}
 
 
 def test_revoke(infrastructure, start_buses, init_netboot_devices):
@@ -73,7 +73,7 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
         "module": "netboot",
         "action": "revoke",
         "kind": "request",
-        "data": {"macaddr": "11:22:33:44:55:77"}
+        "data": {"serial": "0000000D30000299"},
     })
     assert "data" in res
     assert res["data"]["result"] is True
@@ -82,15 +82,24 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
         "module": "netboot",
         "action": "revoke",
         "kind": "notification",
-        "data": {"macaddr": "11:22:33:44:55:77"},
+        "data": {"serial": "0000000D30000299"},
     }
+
+    res = infrastructure.process_message({
+        "module": "netboot",
+        "action": "revoke",
+        "kind": "request",
+        "data": {"serial": "0000000D30000299"},
+    })
+    assert "data" in res
+    assert res["data"]["result"] is False
 
     # missing
     res = infrastructure.process_message({
         "module": "netboot",
         "action": "revoke",
         "kind": "request",
-        "data": {"macaddr": "99:22:33:44:55:66"}
+        "data": {"serial": "0000000D30000312"},
     })
     assert "data" in res
     assert res["data"]["result"] is False
@@ -100,7 +109,7 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
         "action": "list",
         "kind": "request",
     })
-    assert {"macaddr": "11:22:33:44:55:66", "state": "incoming"} in res["data"]["devices"]
+    assert {"serial": "0000000D30000299", "state": "incoming"} in res["data"]["devices"]
 
 
 def test_accept(infrastructure, start_buses, init_netboot_devices):
@@ -111,7 +120,7 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
         "module": "netboot",
         "action": "accept",
         "kind": "request",
-        "data": {"macaddr": "11:22:33:44:55:66"}
+        "data": {"serial": "0000000D300002AF"},
     })
     assert "data" in res
     assert res["data"]["result"] is True
@@ -120,14 +129,23 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
         "module": "netboot",
         "action": "accept",
         "kind": "notification",
-        "data": {"macaddr": "11:22:33:44:55:66"},
+        "data": {"serial": "0000000D300002AF"},
     }
 
     res = infrastructure.process_message({
         "module": "netboot",
         "action": "accept",
         "kind": "request",
-        "data": {"macaddr": "99:22:33:44:55:77"}
+        "data": {"serial": "0000000D300002AF"},
+    })
+    assert "data" in res
+    assert res["data"]["result"] is False
+
+    res = infrastructure.process_message({
+        "module": "netboot",
+        "action": "accept",
+        "kind": "request",
+        "data": {"serial": "0000000D30000312"},
     })
     assert "data" in res
     assert res["data"]["result"] is False
@@ -137,4 +155,4 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
         "action": "list",
         "kind": "request",
     })
-    assert {"macaddr": "11:22:33:44:55:66", "state": "accepted"} in res["data"]["devices"]
+    assert {"serial": "0000000D300002AF", "state": "accepted"} in res["data"]["devices"]

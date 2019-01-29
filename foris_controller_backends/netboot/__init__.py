@@ -36,10 +36,10 @@ class NetbootCmds(BaseCmdLine):
             parsed = json.loads(stdout)
             logger.debug("list obtained: %s", parsed)
             res = []
-            for macaddr in parsed["accepted"]:
-                res.append({"macaddr": macaddr, "state": "accepted"})
-            for macaddr in parsed["incoming"]:
-                res.append({"macaddr": macaddr, "state": "incoming"})
+            for serial in parsed["accepted"]:
+                res.append({"serial": serial, "state": "accepted"})
+            for serial in parsed["incoming"]:
+                res.append({"serial": serial, "state": "incoming"})
             return res
 
         except ValueError:
@@ -49,10 +49,10 @@ class NetbootCmds(BaseCmdLine):
 
         return []
 
-    def revoke(self, macaddr: str) -> bool:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "revoke", macaddr)
+    def revoke(self, serial: str) -> bool:
+        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "revoke", serial)
         return retval == 0
 
-    def accept(self, macaddr: str) -> bool:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "accept", macaddr)
+    def accept(self, serial: str) -> bool:
+        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "accept", serial)
         return retval == 0

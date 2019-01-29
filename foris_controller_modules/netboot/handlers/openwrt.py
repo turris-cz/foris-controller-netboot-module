@@ -38,9 +38,9 @@ class OpenwrtNetbootHandler(Handler, BaseOpenwrtHandler):
         return OpenwrtNetbootHandler.cmds.list()
 
     @logger_wrapper(logger)
-    def revoke(self, macaddr: str):
-        return OpenwrtNetbootHandler.cmds.revoke(macaddr)
+    def revoke(self, serial: str):
+        return OpenwrtNetbootHandler.cmds.revoke(serial)
 
     @logger_wrapper(logger)
-    def accept(self, macaddr: str):
-        return OpenwrtNetbootHandler.cmds.accept(macaddr)
+    def accept(self, serial: str):
+        return OpenwrtNetbootHandler.cmds.accept(serial)

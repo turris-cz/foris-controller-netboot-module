@@ -30,28 +30,28 @@ logger = logging.getLogger(__name__)
 
 class MockNetbootHandler(Handler, BaseMockHandler):
     devices = {
-        "11:22:33:44:55:66": "incoming",
-        "11:22:33:44:55:77": "accepted",
+        "0000000D300002AF": "incoming",
+        "0000000D30000299": "accepted",
     }
 
     @logger_wrapper(logger)
     def list(self):
-        return [{"macaddr": k, "state": v} for k, v in MockNetbootHandler.devices.items()]
+        return [{"serial": k, "state": v} for k, v in MockNetbootHandler.devices.items()]
 
     @logger_wrapper(logger)
-    def revoke(self, macaddr):
-        if macaddr not in MockNetbootHandler.devices:
+    def revoke(self, serial):
+        if serial not in MockNetbootHandler.devices:
             return False
-        if MockNetbootHandler.devices[macaddr] != "accepted":
+        if MockNetbootHandler.devices[serial] != "accepted":
             return False
-        MockNetbootHandler.devices[macaddr] = "incoming"
+        MockNetbootHandler.devices[serial] = "incoming"
         return True
 
     @logger_wrapper(logger)
-    def accept(self, macaddr):
-        if macaddr not in MockNetbootHandler.devices:
+    def accept(self, serial):
+        if serial not in MockNetbootHandler.devices:
             return False
-        if MockNetbootHandler.devices[macaddr] != "incoming":
+        if MockNetbootHandler.devices[serial] != "incoming":
             return False
-        MockNetbootHandler.devices[macaddr] = "accepted"
+        MockNetbootHandler.devices[serial] = "accepted"
         return True
