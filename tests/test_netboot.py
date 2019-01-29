@@ -100,7 +100,7 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
         "action": "list",
         "kind": "request",
     })
-    assert {"macaddr": "11:22:33:44:55:66", "state": "incomming"} in res["data"]["devices"]
+    assert {"macaddr": "11:22:33:44:55:66", "state": "incoming"} in res["data"]["devices"]
 
 
 def test_accept(infrastructure, start_buses, init_netboot_devices):

@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class MockNetbootHandler(Handler, BaseMockHandler):
     devices = {
-        "11:22:33:44:55:66": "incomming",
+        "11:22:33:44:55:66": "incoming",
         "11:22:33:44:55:77": "accepted",
     }
 
@@ -44,14 +44,14 @@ class MockNetbootHandler(Handler, BaseMockHandler):
             return False
         if MockNetbootHandler.devices[macaddr] != "accepted":
             return False
-        MockNetbootHandler.devices[macaddr] = "incomming"
+        MockNetbootHandler.devices[macaddr] = "incoming"
         return True
 
     @logger_wrapper(logger)
     def accept(self, macaddr):
         if macaddr not in MockNetbootHandler.devices:
             return False
-        if MockNetbootHandler.devices[macaddr] != "incomming":
+        if MockNetbootHandler.devices[macaddr] != "incoming":
             return False
         MockNetbootHandler.devices[macaddr] = "accepted"
         return True

@@ -21,17 +21,17 @@ def get_lists():
 
 
 if args[0] == "list-all":
-    accepted, incomming = get_lists()
+    accepted, incoming = get_lists()
     res = {
         "accepted": accepted,
-        "incomming": incomming,
+        "incoming": incoming,
     }
     print(json.dumps(res, indent=2))
     sys.exit(0)
-elif args[0] == "list-incomming":
-    _, incomming = get_lists()
+elif args[0] == "list-incoming":
+    _, incoming = get_lists()
     res = {
-        "incomming": incomming,
+        "incoming": incoming,
     }
     print(json.dumps(res, indent=2))
     sys.exit(0)

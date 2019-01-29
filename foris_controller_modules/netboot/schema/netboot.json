@@ -1,6 +1,6 @@
 {
     "definitions": {
-        "device_states": {"enum": ["accepted", "incomming"]}
+        "device_states": {"enum": ["accepted", "incoming"]}
     },
     "oneOf": [
         {

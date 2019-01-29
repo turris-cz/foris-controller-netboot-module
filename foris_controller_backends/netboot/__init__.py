@@ -38,8 +38,8 @@ class NetbootCmds(BaseCmdLine):
             res = []
             for macaddr in parsed["accepted"]:
                 res.append({"macaddr": macaddr, "state": "accepted"})
-            for macaddr in parsed["incomming"]:
-                res.append({"macaddr": macaddr, "state": "incomming"})
+            for macaddr in parsed["incoming"]:
+                res.append({"macaddr": macaddr, "state": "incoming"})
             return res
 
         except ValueError:
