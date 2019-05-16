@@ -17,29 +17,28 @@ path = pathlib.Path(DEVICE_PATH)
 def get_lists():
     macs = {e.parts[-1] for e in path.glob("*")}
     accepted = {e.parts[-2] for e in path.glob("*/accepted")}
-    return list(accepted), list(macs - accepted)
+    transfering = {e.parts[-2] for e in path.glob("*/transfering")}
+    return list(accepted), list(macs - accepted - transfering), list(transfering)
 
 
-if args[0] == "list-all":
-    accepted, incoming = get_lists()
-    res = {
-        "accepted": accepted,
-        "incoming": incoming,
-    }
+if args[0] == "list-all" or args[0] == "list":
+    accepted, incoming, transfering = get_lists()
+    res = {"accepted": accepted, "incoming": incoming, "transfering": transfering}
     print(json.dumps(res, indent=2))
     sys.exit(0)
 elif args[0] == "list-incoming":
-    _, incoming = get_lists()
-    res = {
-        "incoming": incoming,
-    }
+    _, incoming, _ = get_lists()
+    res = {"incoming": incoming}
     print(json.dumps(res, indent=2))
     sys.exit(0)
 elif args[0] == "list-accepted":
-    accepted, _ = get_lists()
-    res = {
-        "accepted": accepted,
-    }
+    accepted, _, _ = get_lists()
+    res = {"accepted": accepted}
+    print(json.dumps(res, indent=2))
+    sys.exit(0)
+elif args[0] == "list-transfering":
+    _, _, transfering = get_lists()
+    res = {"transfering": accepted}
     print(json.dumps(res, indent=2))
     sys.exit(0)
 elif args[0] == "revoke":
@@ -51,7 +50,8 @@ elif args[0] == "revoke":
         sys.exit(1)
 elif args[0] == "accept":
     accepted_path = path / args[1] / "accepted"
-    if accepted_path.exists():
+    transfering_path = path / args[1] / "transfering"
+    if accepted_path.exists() or transfering_path.exists():
         sys.exit(1)
     else:
         with accepted_path.open("w") as f:

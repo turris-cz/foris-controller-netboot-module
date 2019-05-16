@@ -22,7 +22,11 @@ import os
 import shutil
 
 from foris_controller_testtools.fixtures import (
-    backend, infrastructure, start_buses, mosquitto_test, ubusd_test
+    backend,
+    infrastructure,
+    start_buses,
+    mosquitto_test,
+    ubusd_test,
 )
 
 
@@ -45,6 +49,12 @@ def init_netboot_devices():
     with open(os.path.join(dir_path, "accepted"), "w") as f:
         f.flush()
 
+    dir_path = os.path.join(DEVICE_PATH, "0000000D3000028E")
+    os.makedirs(dir_path)
+
+    with open(os.path.join(dir_path, "transfering"), "w") as f:
+        f.flush()
+
     yield DEVICE_PATH
 
     try:
@@ -53,13 +63,8 @@ def init_netboot_devices():
         pass
 
 
-
 def test_list(infrastructure, start_buses, init_netboot_devices):
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "list",
-        "kind": "request",
-    })
+    res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert "devices" in res["data"]
     for device in res["data"]["devices"]:
         set(device.keys()) == {"serial", "state"}
@@ -69,12 +74,14 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
     filters = [("netboot", "revoke")]
     notifications = infrastructure.get_notifications(filters=filters)
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "revoke",
-        "kind": "request",
-        "data": {"serial": "0000000D30000299"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D30000299"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is True
     notifications = infrastructure.get_notifications(notifications, filters=filters)
@@ -85,43 +92,60 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
         "data": {"serial": "0000000D30000299"},
     }
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "revoke",
-        "kind": "request",
-        "data": {"serial": "0000000D30000299"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D30000299"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is False
 
     # missing
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "revoke",
-        "kind": "request",
-        "data": {"serial": "0000000D30000312"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D30000312"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is False
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "list",
-        "kind": "request",
-    })
+    res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert {"serial": "0000000D30000299", "state": "incoming"} in res["data"]["devices"]
+
+    # transfering
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D3000028E"},
+        }
+    )
+    assert "data" in res
+    assert res["data"]["result"] is False
+
+    res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
+    assert {"serial": "0000000D3000028E", "state": "transfering"} in res["data"]["devices"]
 
 
 def test_accept(infrastructure, start_buses, init_netboot_devices):
     filters = [("netboot", "accept")]
     notifications = infrastructure.get_notifications(filters=filters)
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "accept",
-        "kind": "request",
-        "data": {"serial": "0000000D300002AF"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D300002AF"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is True
     notifications = infrastructure.get_notifications(notifications, filters=filters)
@@ -132,27 +156,42 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
         "data": {"serial": "0000000D300002AF"},
     }
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "accept",
-        "kind": "request",
-        "data": {"serial": "0000000D300002AF"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D300002AF"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is False
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "accept",
-        "kind": "request",
-        "data": {"serial": "0000000D30000312"},
-    })
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D30000312"},
+        }
+    )
     assert "data" in res
     assert res["data"]["result"] is False
 
-    res = infrastructure.process_message({
-        "module": "netboot",
-        "action": "list",
-        "kind": "request",
-    })
+    res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert {"serial": "0000000D300002AF", "state": "accepted"} in res["data"]["devices"]
+
+    # transfering
+    res = infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D3000028E"},
+        }
+    )
+    assert "data" in res
+    assert res["data"]["result"] is False
+
+    res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
+    assert {"serial": "0000000D3000028E", "state": "transfering"} in res["data"]["devices"]

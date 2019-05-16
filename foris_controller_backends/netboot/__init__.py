@@ -40,6 +40,8 @@ class NetbootCmds(BaseCmdLine):
                 res.append({"serial": serial, "state": "accepted"})
             for serial in parsed["incoming"]:
                 res.append({"serial": serial, "state": "incoming"})
+            for serial in parsed["transfering"]:
+                res.append({"serial": serial, "state": "transfering"})
             return res
 
         except ValueError:

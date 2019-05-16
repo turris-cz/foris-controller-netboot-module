@@ -32,6 +32,7 @@ class MockNetbootHandler(Handler, BaseMockHandler):
     devices = {
         "0000000D300002AF": "incoming",
         "0000000D30000299": "accepted",
+        "0000000D3000028E": "transfering",
     }
 
     @logger_wrapper(logger)
