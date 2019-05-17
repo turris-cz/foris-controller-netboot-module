@@ -20,7 +20,4 @@
 from .mock import MockNetbootHandler
 from .openwrt import OpenwrtNetbootHandler
 
-__all__ = [
-    'MockNetbootHandler',
-    'OpenwrtNetbootHandler',
-]
+__all__ = ["MockNetbootHandler", "OpenwrtNetbootHandler"]

@@ -27,7 +27,6 @@ class NetbootModule(BaseModule):
     logger = logging.getLogger(__name__)
 
     def action_accept(self, data):
-
         def notify(msg: dict):
             self.notify("accept", msg)
 
@@ -46,10 +45,6 @@ class NetbootModule(BaseModule):
         return {"devices": self.handler.list()}
 
 
-@wrap_required_functions([
-    'revoke',
-    'accept',
-    'list',
-])
+@wrap_required_functions(["revoke", "accept", "list"])
 class Handler(object):
     pass
