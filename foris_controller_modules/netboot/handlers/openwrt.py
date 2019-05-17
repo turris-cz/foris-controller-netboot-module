@@ -22,7 +22,7 @@ import logging
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
 
-from foris_controller_backends.netboot import NetbootCmds
+from foris_controller_backends.netboot import NetbootCmds, NetbootAsync
 
 from .. import Handler
 
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 class OpenwrtNetbootHandler(Handler, BaseOpenwrtHandler):
 
     cmds = NetbootCmds()
+    async_cmds = NetbootAsync()
 
     @logger_wrapper(logger)
     def list(self):
@@ -42,5 +43,5 @@ class OpenwrtNetbootHandler(Handler, BaseOpenwrtHandler):
         return OpenwrtNetbootHandler.cmds.revoke(serial)
 
     @logger_wrapper(logger)
-    def accept(self, serial: str):
-        return OpenwrtNetbootHandler.cmds.accept(serial)
+    def accept(self, serial: str, notify: callable, reset_notifications: callable):
+        return OpenwrtNetbootHandler.async_cmds.accept(serial, notify, reset_notifications)

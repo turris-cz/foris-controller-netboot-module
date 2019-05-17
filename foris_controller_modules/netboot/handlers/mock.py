@@ -18,7 +18,7 @@
 #
 
 import logging
-import copy
+import random
 
 from foris_controller.handler_base import BaseMockHandler
 from foris_controller.utils import logger_wrapper
@@ -49,10 +49,15 @@ class MockNetbootHandler(Handler, BaseMockHandler):
         return True
 
     @logger_wrapper(logger)
-    def accept(self, serial):
-        if serial not in MockNetbootHandler.devices:
-            return False
-        if MockNetbootHandler.devices[serial] != "incoming":
-            return False
-        MockNetbootHandler.devices[serial] = "accepted"
-        return True
+    def accept(self, serial: str, notify: callable, reset_notifications: callable):
+        task_id = "%08X" % random.randrange(2 ** 32)
+        notify({"task_id": task_id, "status": "started", "serial": serial})
+        if (
+            serial not in MockNetbootHandler.devices
+            or MockNetbootHandler.devices[serial] != "incoming"
+        ):
+            notify({"task_id": task_id, "status": "failed", "serial": serial})
+        else:
+            MockNetbootHandler.devices[serial] = "accepted"
+            notify({"task_id": task_id, "status": "succeeded", "serial": serial})
+        return task_id

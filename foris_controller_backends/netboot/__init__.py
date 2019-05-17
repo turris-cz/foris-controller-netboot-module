@@ -19,9 +19,10 @@
 
 import logging
 import json
+import re
 import typing
 
-from foris_controller_backends.cmdline import BaseCmdLine
+from foris_controller_backends.cmdline import BaseCmdLine, AsyncCommand
 from foris_controller_backends.uci import UciBackend, get_option_named
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class NetbootCmds(BaseCmdLine):
     def list(self) -> typing.List[dict]:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "list-all", "-j")
+        retval, stdout, _ = self._run_command("/usr/bin/netboot-manager", "list-all", "-j")
         if retval != 0:
             return []
         try:
@@ -52,9 +53,41 @@ class NetbootCmds(BaseCmdLine):
         return []
 
     def revoke(self, serial: str) -> bool:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "revoke", serial)
+        retval, stdout, _ = self._run_command("/usr/bin/netboot-manager", "revoke", serial)
         return retval == 0
 
     def accept(self, serial: str) -> bool:
-        retval, stdout, _ = self._run_command('/usr/bin/netboot-manager', "accept", serial)
+        retval, stdout, _ = self._run_command("/usr/bin/netboot-manager", "accept", serial)
         return retval == 0
+
+
+class NetbootAsync(AsyncCommand):
+    def accept(self, serial: str, notify: callable, reset_notifications: callable) -> str:
+        def handler_exit(process_data):
+            notify(
+                {
+                    "task_id": process_data.id,
+                    "serial": serial,
+                    "status": "succeeded" if process_data.get_retval() == 0 else "failed",
+                }
+            )
+
+        def gen_handler(status):
+            def handler(matched, process_data):
+                notify({"task_id": process_data.id, "status": status, "serial": serial})
+
+            return handler
+
+        task_id = self.start_process(
+            ["/usr/bin/netboot-manager", "accept", serial],
+            [
+                (r"^gen_ca: started.*$", gen_handler("started")),
+                (r"^gen_ca: finished.*$", gen_handler("ca_ready")),
+                (r"^gen_server: finished.*$", gen_handler("server_ready")),
+                (r"^gen_client: finished.*$", gen_handler("client_ready")),
+            ],
+            handler_exit,
+            reset_notifications,
+        )
+
+        return task_id

@@ -20,6 +20,8 @@
 import pytest
 import os
 import shutil
+import typing
+import time
 
 from foris_controller_testtools.fixtures import (
     backend,
@@ -28,9 +30,30 @@ from foris_controller_testtools.fixtures import (
     mosquitto_test,
     ubusd_test,
 )
+from foris_controller_testtools.infrastructure import Infrastructure
 
 
 DEVICE_PATH = "/tmp/foris-controller-netboot-test"
+
+
+def check_accept_notification(infra: Infrastructure, task_id: str, expected_state: str):
+    filters = [("netboot", "accept")]
+    notifications = None
+    old_len: int = 0
+
+    for i in range(1, 5):
+        old_len = len(notifications or [])
+        notifications = infra.get_notifications(notifications, filters)
+        notification_data = [e["data"] for e in notifications[old_len:]]
+        if [
+            e
+            for e in notification_data
+            if e["task_id"] == task_id and e["status"] == expected_state
+        ]:
+            return
+        time.sleep(0.1 * (i ** 2))
+
+    raise Exception(f"Failed to get netboot.accept notification ({task_id}, {expected_state})")
 
 
 @pytest.fixture(scope="function")
@@ -135,8 +158,6 @@ def test_revoke(infrastructure, start_buses, init_netboot_devices):
 
 
 def test_accept(infrastructure, start_buses, init_netboot_devices):
-    filters = [("netboot", "accept")]
-    notifications = infrastructure.get_notifications(filters=filters)
 
     res = infrastructure.process_message(
         {
@@ -146,15 +167,7 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
             "data": {"serial": "0000000D300002AF"},
         }
     )
-    assert "data" in res
-    assert res["data"]["result"] is True
-    notifications = infrastructure.get_notifications(notifications, filters=filters)
-    assert notifications[-1] == {
-        "module": "netboot",
-        "action": "accept",
-        "kind": "notification",
-        "data": {"serial": "0000000D300002AF"},
-    }
+    check_accept_notification(infrastructure, res["data"]["task_id"], "succeeded")
 
     res = infrastructure.process_message(
         {
@@ -164,8 +177,7 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
             "data": {"serial": "0000000D300002AF"},
         }
     )
-    assert "data" in res
-    assert res["data"]["result"] is False
+    check_accept_notification(infrastructure, res["data"]["task_id"], "failed")
 
     res = infrastructure.process_message(
         {
@@ -175,8 +187,7 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
             "data": {"serial": "0000000D30000312"},
         }
     )
-    assert "data" in res
-    assert res["data"]["result"] is False
+    check_accept_notification(infrastructure, res["data"]["task_id"], "failed")
 
     res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert {"serial": "0000000D300002AF", "state": "accepted"} in res["data"]["devices"]
@@ -190,8 +201,7 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
             "data": {"serial": "0000000D3000028E"},
         }
     )
-    assert "data" in res
-    assert res["data"]["result"] is False
+    check_accept_notification(infrastructure, res["data"]["task_id"], "failed")
 
     res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert {"serial": "0000000D3000028E", "state": "transfering"} in res["data"]["devices"]

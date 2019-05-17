@@ -3,8 +3,10 @@
 import sys
 import json
 import pathlib
+import time
 
 DEVICE_PATH = "/tmp/foris-controller-netboot-test/"
+SLEEP_STEP = 0.1
 
 args = sys.argv[1:]
 
@@ -19,6 +21,108 @@ def get_lists():
     accepted = {e.parts[-2] for e in path.glob("*/accepted")}
     transfering = {e.parts[-2] for e in path.glob("*/transfering")}
     return list(accepted), list(macs - accepted - transfering), list(transfering)
+
+
+def accept(client_id: str):
+    time.sleep(SLEEP_STEP)
+
+    def print_step(text):
+        print(text)
+        time.sleep(SLEEP_STEP)
+
+    print_step(
+        """\
+gen_ca: started (remote)
+Generating a RSA private key
+..............++++
+"""
+    )
+    print_step(
+        """\
+..........................................................................................................................................................................................................................................................++++
+writing new private key to 'ca.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Common Name (e.g. server FQDN or YOUR name) []:Using configuration from /etc/cagen/openssl.cnf
+gen_ca: finished (remote)
+"""
+    )
+    print_step(
+        """\
+gen_server: started (turris)
+Generating a RSA private key
+"""
+    )
+    print_step(
+        """\
+.................++++
+........................................................................................................................................................................................................++++
+writing new private key to '01.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Common Name (e.g. server FQDN or YOUR name) []:Using configuration from /etc/cagen/openssl.cnf
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+commonName            :ASN.1 12:'turris'
+Certificate is to be certified until May 14 07:22:21 2029 GMT (3650 days)
+
+Write out database with 1 new entries
+Data Base Updated
+Using configuration from /etc/cagen/openssl.cnf
+gen_server: finished (turris)
+"""
+    )
+    print_step(
+        f"""\
+    gen_client: started (XXXXXXXXXXXXXXXX-{client_id})
+Generating a RSA private key
+"""
+    )
+    print_step(
+        f"""\
+.................................................................................................................................................................................................++++
+........................................++++
+writing new private key to '02.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Common Name (e.g. server FQDN or YOUR name) []:Using configuration from /etc/cagen/openssl.cnf
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+commonName            :ASN.1 12:'XXXXXXXXXXXXXXXX-{client_id}'
+Certificate is to be certified until May 14 07:22:56 2029 GMT (3650 days)
+
+Write out database with 1 new entries
+Data Base Updated
+Using configuration from /etc/cagen/openssl.cnf
+gen_client: finished (XXXXXXXXXXXXXXXX-{client_id})
+"""
+    )
+    print_step(
+        f"""\
+IP address 192.168.15.253 was allocated for {client_id} (d8:58:d7:00:b3:62)
+{{"result": true, "controller_id": "{client_id}"}}
+"""
+    )
 
 
 if args[0] == "list-all" or args[0] == "list":
@@ -54,6 +158,7 @@ elif args[0] == "accept":
     if accepted_path.exists() or transfering_path.exists():
         sys.exit(1)
     else:
+        accept(args[1])
         with accepted_path.open("w") as f:
             f.flush()
         sys.exit(0)

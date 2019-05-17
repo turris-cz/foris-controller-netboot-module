@@ -122,17 +122,17 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "result": {"type": "boolean"}
+                        "task_id": {"type": "string"}
                     },
                     "additionalProperties": false,
-                    "required": ["result"]
+                    "required": ["task_id"]
                 }
             },
             "additionalProperties": false,
             "required": ["data"]
         },
         {
-            "description": "Notification that netboot access was accepted",
+            "description": "Notification about accept state",
             "properties": {
                 "module": {"enum": ["netboot"]},
                 "kind": {"enum": ["notification"]},
@@ -140,10 +140,12 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "serial": {"type": "string"}
+                        "task_id": {"type": "string"},
+                        "serial": {"type": "string"},
+                        "status": {"enum": ["started", "ca_ready", "server_ready", "client_ready", "succeeded", "failed"]}
                     },
                     "additionalProperties": false,
-                    "required": ["serial"]
+                    "required": ["task_id", "status", "serial"]
                 }
             },
             "additionalProperties": false,

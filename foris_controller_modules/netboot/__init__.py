@@ -27,11 +27,13 @@ class NetbootModule(BaseModule):
     logger = logging.getLogger(__name__)
 
     def action_accept(self, data):
-        res = {}
-        res = self.handler.accept(data["serial"])
-        if res:
-            self.notify("accept", data)
-        return {"result": res}
+
+        def notify(msg: dict):
+            self.notify("accept", msg)
+
+        async_id = self.handler.accept(data["serial"], notify, self.reset_notify)
+
+        return {"task_id": async_id}
 
     def action_revoke(self, data):
         res = {}
