@@ -1,3 +1,9 @@
+0.3 (2019-05-27)
+----------------
+
+* making accept asynchronous
+* transfering state added
+
 0.2 (2019-01-29)
 ----------------
 
