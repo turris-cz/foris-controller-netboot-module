@@ -19,11 +19,15 @@
 
 import logging
 import json
-import re
 import typing
+import pathlib
 
+from datetime import datetime
+
+from foris_controller.app import app_info
 from foris_controller_backends.cmdline import BaseCmdLine, AsyncCommand
-from foris_controller_backends.uci import UciBackend, get_option_named
+from foris_controller_backends.files import BaseFile, makedirs, path_exists
+from foris_controller.utils import readlock, writelock, RWLock
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,146 @@ class NetbootCmds(BaseCmdLine):
     def accept(self, serial: str) -> bool:
         retval, stdout, _ = self._run_command("/usr/bin/netboot-manager", "accept", serial)
         return retval == 0
+
+
+class NetbootFiles(BaseFile):
+    command_lock = RWLock(app_info["lock_backend"])
+
+    CMDS_FILE = "/etc/netboot/commands.json"
+    LOGS_FILE = "/tmp/.netboot/cmd-logs.json"
+
+    def _read(self, path: str, default=[]) -> dict:
+        # create file if not present
+        path_object = pathlib.Path(path)
+        makedirs(str(path_object.parent))
+        if not path_exists(path):
+            self._store_to_file(path, json.dumps(default))
+
+        return json.loads(self._file_content(path))
+
+    def _write(self, path: str, content: dict) -> dict:
+        self._store_to_file(path, json.dumps(content))
+
+    def _command_exists(
+        self, cmds_list: typing.List[dict], controller_id: str, module: str, action: str
+    ) -> typing.Optional[typing.Tuple[int, dict]]:
+        for cmd_record in cmds_list:
+            if cmd_record["controller_id"] == controller_id:
+                for (idx, record) in enumerate(cmd_record["commands"]):
+                    if record["module"] == module and record["action"] == action:
+                        return idx, cmd_record["commands"]
+                break
+        return None
+
+    @readlock(command_lock, logger)
+    def commands_list(self) -> typing.List[dict]:
+        commands_list = self._read(NetbootFiles.CMDS_FILE)
+        log_list = self._read(NetbootFiles.LOGS_FILE, {})
+
+        for command in commands_list:
+            controller_id = command["controller_id"]
+            command["logs"] = log_list.get(controller_id, [])
+
+        return commands_list
+
+    @writelock(command_lock, logger)
+    def command_set(
+        self, controller_id: str, command: dict
+    ) -> typing.Optional[typing.Tuple[str, str]]:
+        commands_list = self._read(NetbootFiles.CMDS_FILE)
+
+        # get controller record
+        controller_record = None
+        for cmd_record in commands_list:
+            if cmd_record["controller_id"] == controller_id:
+                controller_record = cmd_record
+                break
+
+        if not controller_record:
+            controller_record = {"controller_id": controller_id, "commands": [], "logs": []}
+            commands_list.append(controller_record)
+
+        # find command
+        command_record = None
+        for record in controller_record["commands"]:
+            if record["module"] == command["module"] and record["action"] == command["action"]:
+                command_record = record
+        if not command_record:
+            command_record = {"module": command["module"], "action": command["action"]}
+            controller_record["commands"].append(command_record)
+
+        # update command
+        if "data" in command:
+            command_record["data"] = command["data"]
+        else:
+            if "data" in command_record:
+                del command_record["data"]
+
+        module = app_info["modules"].get(command_record["module"])
+        if module:
+            command_record["module_version"] = module.version
+        else:
+            command_record["module_version"] = "?"
+        command_record["stored_time"] = datetime.utcnow().isoformat()
+
+        # strore into disk
+        self._write(NetbootFiles.CMDS_FILE, commands_list)
+
+        return command_record["module_version"], command_record["stored_time"]
+
+    @writelock(command_lock, logger)
+    def command_unset(self, controller_id: str, module: str, action: str) -> bool:
+        commands_list = self._read(NetbootFiles.CMDS_FILE)
+
+        exists = self._command_exists(commands_list, controller_id, module, action)
+        if not exists:
+            return False
+
+        idx, cmds = exists
+        del cmds[idx]
+
+        # strore into disk
+        self._write(NetbootFiles.CMDS_FILE, commands_list)
+
+        return True
+
+    @writelock(command_lock, logger)
+    def command_log(self, controller_id: str, batch_id: str, record: dict) -> bool:
+        commands_list = self._read(NetbootFiles.CMDS_FILE)
+
+        if not self._command_exists(
+            commands_list, controller_id, record["module"], record["action"]
+        ):
+            return None
+
+        # update log list
+        log_dict = self._read(NetbootFiles.LOGS_FILE, {})
+        logs = log_dict.get(controller_id, [])
+        batches = [e for e in logs if e["batch_id"] == batch_id]
+        if batches:
+            batch_records = batches[0]
+        else:
+            if len(logs) >= 10:
+                logs.pop(0)
+            # remove oldest batch if capacity was reached
+            batch_records = {"batch_id": batch_id, "records": []}
+            logs.append(batch_records)
+
+        stored_time = datetime.utcnow().isoformat()
+        batch_records["records"].append(
+            {
+                "module": record["module"],
+                "action": record["action"],
+                "result": record["result"],
+                "when_stored": stored_time,
+            }
+        )
+        log_dict[controller_id] = logs
+
+        # strore into disk
+        self._write(NetbootFiles.LOGS_FILE, log_dict)
+
+        return stored_time
 
 
 class NetbootAsync(AsyncCommand):

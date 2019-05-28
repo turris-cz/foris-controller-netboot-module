@@ -22,6 +22,7 @@ import os
 import shutil
 import typing
 import time
+import copy
 
 from foris_controller_testtools.fixtures import (
     backend,
@@ -205,3 +206,305 @@ def test_accept(infrastructure, start_buses, init_netboot_devices):
 
     res = infrastructure.process_message({"module": "netboot", "action": "list", "kind": "request"})
     assert {"serial": "0000000D3000028E", "state": "transfering"} in res["data"]["devices"]
+
+
+def test_commands_list(infrastructure, start_buses, init_netboot_devices):
+    res = infrastructure.process_message(
+        {"module": "netboot", "kind": "request", "action": "commands_list"}
+    )
+    assert "errors" not in res
+    assert "data" in res
+    assert "controllers" in res["data"]
+
+
+def test_command_set(infrastructure, start_buses, init_netboot_devices):
+    filters = [("netboot", "command_set")]
+
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D30000299"},
+        }
+    )
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D300002AF"},
+        }
+    )
+
+    def set_check(controller_id, module, action, data, result):
+        notifications = infrastructure.get_notifications(filters=filters)
+
+        command = {"module": module, "action": action}
+        if data is not None:
+            command["data"] = data
+
+        res = infrastructure.process_message(
+            {
+                "module": "netboot",
+                "kind": "request",
+                "action": "command_set",
+                "data": {"controller_id": controller_id, "command": command},
+            }
+        )
+
+        assert res["data"]["result"] == result
+        if result:
+            # check notifications
+            notifications = infrastructure.get_notifications(notifications, filters=filters)
+            assert notifications[-1]["data"]["controller_id"] == controller_id
+            assert notifications[-1]["data"]["command"]["module"] == module
+            assert notifications[-1]["data"]["command"]["action"] == action
+            if data:
+                assert notifications[-1]["data"]["command"]["data"] == data
+            else:
+                assert "data" not in notifications[-1]["data"]["command"]
+            assert "module_version" in notifications[-1]["data"]["command"]
+            module_version = notifications[-1]["data"]["command"]["module_version"]
+            assert "stored_time" in notifications[-1]["data"]["command"]
+            stored_time = notifications[-1]["data"]["command"]["stored_time"]
+
+            # check whether list
+            res = infrastructure.process_message(
+                {"module": "netboot", "kind": "request", "action": "commands_list"}
+            )
+            controllers = [
+                e for e in res["data"]["controllers"] if e["controller_id"] == controller_id
+            ]
+            assert len(controllers) == 1
+            commands = [
+                e
+                for e in controllers[0]["commands"]
+                if e["module"] == module and e["action"] == action
+            ]
+            assert len(commands) == 1
+            if data:
+                assert commands[0]["data"] == data
+            else:
+                assert "data" not in commands[0]
+            assert commands[0]["module_version"] == module_version
+            assert commands[0]["stored_time"] == stored_time
+
+    # controller not in netboot list
+    set_check("0000000D30000312", "my_mod", "my_action", {"some": "data"}, False)
+
+    # controller in incomming list
+    set_check("0000000D300002AF", "my_mod", "my_action", {"some": "data"}, False)
+
+    # controller in transfering list
+    set_check("0000000D3000028E", "my_mod", "my_action", {"some": "data"}, False)
+
+    # with data
+    set_check("0000000D30000299", "my_mod", "my_action", {"some": "data"}, True)
+
+    # without data
+    set_check("0000000D30000299", "my_mod2", "my_action2", None, True)
+
+    # set data
+    set_check("0000000D30000299", "my_mod2", "my_action2", {"some": "data"}, True)
+
+    # unset data
+    set_check("0000000D30000299", "my_mod", "my_action", None, True)
+
+
+def test_command_unset(infrastructure, start_buses, init_netboot_devices):
+    filters = [("netboot", "command_unset")]
+
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D30000299"},
+        }
+    )
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D300002AF"},
+        }
+    )
+
+    def set_cmd(module, action, data):
+        command = {"module": module, "action": action}
+        if data:
+            command["data"] = data
+        res = infrastructure.process_message(
+            {
+                "module": "netboot",
+                "kind": "request",
+                "action": "command_set",
+                "data": {"controller_id": "0000000D30000299", "command": command},
+            }
+        )
+        assert res["data"]["result"] is True
+
+    set_cmd("unset", "unset1", None)
+    set_cmd("unset", "unset2", {})
+
+    def unset_check(controller_id, module, action, result):
+        notifications = infrastructure.get_notifications(filters=filters)
+
+        res = infrastructure.process_message(
+            {
+                "module": "netboot",
+                "kind": "request",
+                "action": "command_unset",
+                "data": {"controller_id": controller_id, "module": module, "action": action},
+            }
+        )
+
+        assert res["data"]["result"] == result
+        if result:
+            # check notifications
+            notifications = infrastructure.get_notifications(notifications, filters=filters)
+            assert notifications[-1]["data"] == {
+                "controller_id": controller_id,
+                "module": module,
+                "action": action,
+            }
+
+            # check not in whether list
+            res = infrastructure.process_message(
+                {"module": "netboot", "kind": "request", "action": "commands_list"}
+            )
+            controllers = [
+                e for e in res["data"]["controllers"] if e["controller_id"] == controller_id
+            ]
+            if len(controllers) < 1:
+                return
+
+            assert len(controllers) == 1
+            commands = [
+                e
+                for e in controllers[0]["commands"]
+                if e["module"] == module and e["action"] == action
+            ]
+            assert len(commands) == 0
+
+    # controller not in netboot list
+    unset_check("0000000D30000312", "unset", "unset1", False)
+
+    # controller in incoming
+    unset_check("0000000D300002AF", "unset", "unset1", False)
+
+    # controller in transfering
+    unset_check("0000000D3000028E", "unset", "unset1", False)
+
+    # success
+    unset_check("0000000D30000299", "unset", "unset1", True)
+
+    # command not found
+    unset_check("0000000D30000299", "unset", "unset1", False)
+
+
+def test_command_log(infrastructure, start_buses, init_netboot_devices):
+    filters = [("netboot", "command_log")]
+
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "accept",
+            "kind": "request",
+            "data": {"serial": "0000000D30000299"},
+        }
+    )
+    infrastructure.process_message(
+        {
+            "module": "netboot",
+            "action": "revoke",
+            "kind": "request",
+            "data": {"serial": "0000000D300002AF"},
+        }
+    )
+
+    def set_cmd(module, action, data):
+        command = {"module": module, "action": action}
+        if data:
+            command["data"] = data
+        res = infrastructure.process_message(
+            {
+                "module": "netboot",
+                "kind": "request",
+                "action": "command_set",
+                "data": {"controller_id": "0000000D30000299", "command": command},
+            }
+        )
+        assert res["data"]["result"] is True
+
+    set_cmd("logged", "logged1", None)
+    set_cmd("logged", "logged2", {})
+
+    def log_check(controller_id, batch_id, module, action, result_to_store, expected_result):
+        notifications = infrastructure.get_notifications(filters=filters)
+
+        res = infrastructure.process_message(
+            {
+                "module": "netboot",
+                "kind": "request",
+                "action": "command_log",
+                "data": {
+                    "controller_id": controller_id,
+                    "batch_id": batch_id,
+                    "record": {"module": module, "action": action, "result": result_to_store},
+                },
+            }
+        )
+
+        assert res["data"]["result"] == expected_result
+
+        if expected_result:
+            # check notifications
+            notifications = infrastructure.get_notifications(notifications, filters=filters)
+            assert notifications[-1]["data"]["controller_id"] == controller_id
+            assert notifications[-1]["data"]["batch_id"] == batch_id
+            assert notifications[-1]["data"]["record"]["module"] == module
+            assert notifications[-1]["data"]["record"]["action"] == action
+            assert "when_stored" in notifications[-1]["data"]["record"]
+            when_stored = notifications[-1]["data"]["record"]["when_stored"]
+            assert notifications[-1]["data"]["record"]["result"] == result_to_store
+
+            # check whether list
+            res = infrastructure.process_message(
+                {"module": "netboot", "kind": "request", "action": "commands_list"}
+            )
+            controllers = [
+                e for e in res["data"]["controllers"] if e["controller_id"] == controller_id
+            ]
+            assert len(controllers) == 1
+            batches = [e for e in controllers[0]["logs"] if e["batch_id"] == batch_id]
+            assert len(batches) == 1
+            records = [
+                e for e in batches[0]["records"] if e["module"] == module and e["action"] == action
+            ]
+            assert len(records) > 0
+            assert records[-1]["when_stored"] == when_stored
+            assert records[-1]["result"] == result_to_store
+
+    # controller not in netboot list
+    log_check("0000000D30000312", "batch01", "logged", "logged1", True, False)
+
+    # controller in incoming
+    log_check("0000000D300002AF", "batch01", "logged", "logged1", True, False)
+
+    # controller in transfering
+    log_check("0000000D3000028E", "batch01", "logged", "logged1", True, False)
+
+    # command not found
+    log_check("0000000D30000299", "batch01", "notlogged", "logged1", True, False)
+    log_check("0000000D30000299", "batch01", "logged", "logged3", True, False)
+
+    # success
+    log_check("0000000D30000299", "batch01", "logged", "logged1", True, True)
+    log_check("0000000D30000299", "batch01", "logged", "logged1", True, True)
+
+    # success with different batch
+    log_check("0000000D30000299", "batch02", "logged", "logged2", False, True)
+    log_check("0000000D30000299", "batch02", "logged", "logged2", True, True)

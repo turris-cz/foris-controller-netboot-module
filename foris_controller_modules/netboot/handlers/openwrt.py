@@ -18,11 +18,12 @@
 #
 
 import logging
+import typing
 
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
 
-from foris_controller_backends.netboot import NetbootCmds, NetbootAsync
+from foris_controller_backends.netboot import NetbootCmds, NetbootAsync, NetbootFiles
 
 from .. import Handler
 
@@ -33,6 +34,12 @@ class OpenwrtNetbootHandler(Handler, BaseOpenwrtHandler):
 
     cmds = NetbootCmds()
     async_cmds = NetbootAsync()
+    files = NetbootFiles()
+
+    def _netboot_serial_exists(self, serial):
+        return serial in [
+            e["serial"] for e in OpenwrtNetbootHandler.cmds.list() if e["state"] == "accepted"
+        ]
 
     @logger_wrapper(logger)
     def list(self):
@@ -45,3 +52,29 @@ class OpenwrtNetbootHandler(Handler, BaseOpenwrtHandler):
     @logger_wrapper(logger)
     def accept(self, serial: str, notify: callable, reset_notifications: callable):
         return OpenwrtNetbootHandler.async_cmds.accept(serial, notify, reset_notifications)
+
+    @logger_wrapper(logger)
+    def commands_list(self) -> typing.List[dict]:
+        return OpenwrtNetbootHandler.files.commands_list()
+
+    @logger_wrapper(logger)
+    def command_set(
+        self, controller_id: str, command: dict
+    ) -> typing.Optional[typing.Tuple[str, str]]:
+        if not self._netboot_serial_exists(controller_id):
+            return None
+        return OpenwrtNetbootHandler.files.command_set(controller_id, command)
+
+    @logger_wrapper(logger)
+    def command_unset(self, controller_id: str, module: str, action: str) -> bool:
+        if not self._netboot_serial_exists(controller_id):
+            return False
+        return OpenwrtNetbootHandler.files.command_unset(controller_id, module, action)
+
+    @logger_wrapper(logger)
+    def command_log(
+        self, controller_id: str, batch_id, record: dict
+    ) -> typing.Optional[typing.Tuple[str, str]]:
+        if not self._netboot_serial_exists(controller_id):
+            return None
+        return OpenwrtNetbootHandler.files.command_log(controller_id, batch_id, record)

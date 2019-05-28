@@ -1,6 +1,80 @@
 {
     "definitions": {
-        "device_states": {"enum": ["accepted", "incoming", "transfering"]}
+        "batch_id": {"type": "string", "description": "batch in which the command was sent"},
+        "device_states": {"enum": ["accepted", "incoming", "transfering"]},
+        "command_log_get": {
+            "type": "object",
+            "properties": {
+                "module": {"type": "string"},
+                "action": {"type": "string"},
+                "when_stored": {"type": "string", "format": "date-time", "description": "(in UTC)"},
+                "result": {"type": "boolean", "description": "was the command successfull"}
+            },
+            "additionalProperties": false,
+            "required": ["action", "module", "when_stored", "result"]
+        },
+        "command_log_set": {
+            "type": "object",
+            "properties": {
+                "module": {"type": "string"},
+                "action": {"type": "string"},
+                "result": {"type": "boolean", "description": "was the command successfull"}
+            },
+            "additionalProperties": false,
+            "required": ["action", "module", "result"]
+        },
+        "command_set": {
+            "type": "object",
+            "properties": {
+                "module": {"type": "string"},
+                "action": {"type": "string"},
+                "data": {"type": "object"}
+            },
+            "additionalProperties": false,
+            "required": ["module", "action"]
+        },
+        "command_get": {
+            "type": "object",
+            "properties": {
+                "module": {"type": "string"},
+                "action": {"type": "string"},
+                "data": {"type": "object"},
+                "module_version": {"type": "string", "description": "version of the module"},
+                "stored_time": {"type": "string", "format": "date-time", "description": "stored time (in UTC)"}
+            },
+            "additionalProperties": false,
+            "required": ["module", "action", "module_version", "stored_time"]
+        },
+        "controller_commands": {
+            "type": "object",
+            "properties": {
+                "controller_id": {"$ref": "#/definitions/controller_id"},
+                "commands": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/command_get"},
+                    "description": "Commands which will be sequentionally triggered"
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "batch_id": {"$ref": "#/definitions/batch_id"},
+                            "records": {
+                                "type": "array",
+                                "items": {"$ref": "#/definitions/command_log_get"},
+                                "description": "Logs of the command execution (non persistent)"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": ["batch_id", "records"]
+                    },
+                    "maxItems": 10
+                }
+            },
+            "additionalProperties": false,
+            "required": ["controller_id", "commands", "logs"]
+        }
     },
     "oneOf": [
         {
@@ -27,7 +101,8 @@
                                 "type": "object",
                                 "properties": {
                                     "serial": {"type": "string"},
-                                    "state": {"$ref": "#/definitions/device_states"}
+                                    "state": {"$ref": "#/definitions/device_states"},
+                                    "commands_count": {"type": "integer", "minimum": 0}
                                 },
                                 "additionalProperties": false,
                                 "required": ["serial", "state"]
@@ -146,6 +221,208 @@
                     },
                     "additionalProperties": false,
                     "required": ["task_id", "status", "serial"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to list netboot commands (commands dedicated for netboot controller)",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["commands_list"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to list netboot commands (commands dedicated for netboot controller)",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["commands_list"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controllers": {
+                            "type": "array",
+                            "items": {"$ref": "#/definitions/controller_commands"}
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["controllers"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to set command",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["command_set"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "command": {"$ref": "#/definitions/command_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "command"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that command was set",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["command_set"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "command": {"$ref": "#/definitions/command_get"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "command"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to set command",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["command_set"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to unset command",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["command_unset"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "module": {"type": "string"},
+                        "action": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "module", "action"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that command was unset",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["command_unset"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "module": {"type": "string"},
+                        "action": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "module", "action"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to unset command",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["command_unset"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to log command result",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["command_log"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "batch_id": {"$ref": "#/definitions/batch_id"},
+                        "record": {"$ref": "#/definitions/command_log_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "record", "batch_id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that command was logged",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["command_log"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "controller_id": {"$ref": "#/definitions/controller_id"},
+                        "batch_id": {"$ref": "#/definitions/batch_id"},
+                        "record": {"$ref": "#/definitions/command_log_get"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["controller_id", "record", "batch_id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to log command result",
+            "properties": {
+                "module": {"enum": ["netboot"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["command_log"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
                 }
             },
             "additionalProperties": false,
