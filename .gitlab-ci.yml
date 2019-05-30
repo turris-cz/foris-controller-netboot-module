@@ -9,7 +9,7 @@ stages:
   script:
     - source /tmp/test/bin/activate
 
-    - pip install .
+    - pip install .[observer]
 
     - python setup.py test --addopts="--backend openwrt --backend mock"
 
