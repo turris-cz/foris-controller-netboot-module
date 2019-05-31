@@ -1,3 +1,9 @@
+0.4 (2019-05-31)
+----------------
+
+* console script which sends stored commands to netbooted devices added
+* api to store commands added
+
 0.3 (2019-05-27)
 ----------------
 
