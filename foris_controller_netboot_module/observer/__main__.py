@@ -118,6 +118,8 @@ def main():
             controllers = [e for e in resp["controllers"] if e["controller_id"] == controller_id]
             if len(controllers) == 0 or len(controllers[0]["commands"]) == 0:
                 logger.debug("No commands ('%s')", controller_id)
+                # nothing to configure, mark as configured and exit
+                sender.send("remote", "set_netboot_configured", None, controller_id=controller_id)
                 return
 
             commands = controllers[0]["commands"]
