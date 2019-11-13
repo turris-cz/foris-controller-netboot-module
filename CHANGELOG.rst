@@ -1,3 +1,8 @@
+0.4.1 (2019-11-13)
+------------------
+
+* observer: fix - mark device as configured when there are no commands for them
+
 0.4 (2019-05-31)
 ----------------
 
