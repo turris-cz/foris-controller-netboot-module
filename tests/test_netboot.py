@@ -1,6 +1,6 @@
 #
 # foris-controller-netboot-module
-# Copyright (C) 2019 CZ.NIC, z.s.p.o. (http://www.nic.cz/)
+# Copyright (C) 2019-2023 CZ.NIC, z.s.p.o. (http://www.nic.cz/)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,17 +20,8 @@
 import pytest
 import os
 import shutil
-import typing
 import time
-import copy
 
-from foris_controller_testtools.fixtures import (
-    backend,
-    infrastructure,
-    start_buses,
-    mosquitto_test,
-    ubusd_test,
-)
 from foris_controller_testtools.infrastructure import Infrastructure
 
 
