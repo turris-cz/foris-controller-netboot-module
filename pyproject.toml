@@ -40,6 +40,11 @@ foris-netboot-observer = "foris_controller_netboot_module.observer.__main__:main
 path = "foris_controller_netboot_module/__init__.py"
 
 [tool.hatch.build.targets.sdist]
+packages = [
+    "foris_controller_backends/",
+    "foris_controller_modules/",
+    "foris_controller_netboot_module/",
+]
 include = [
     "/foris_controller_modules",
     "/foris_controller_backends",
@@ -47,6 +52,11 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
+packages = [
+    "foris_controller_backends/",
+    "foris_controller_modules/",
+    "foris_controller_netboot_module/",
+]
 include = [
     "/foris_controller_modules",
     "/foris_controller_backends",
