@@ -33,6 +33,9 @@ ubus = [
     "ubus",
 ]
 
+[project.entry-points.foris_controller_modules]
+netboot = "foris_controller_modules.netboot"
+
 [project.scripts]
 foris-netboot-observer = "foris_controller_netboot_module.observer.__main__:main"
 
